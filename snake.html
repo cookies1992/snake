@@ -10,8 +10,10 @@
   </head>
   <body>
       <div id="app">
+            <div>得分：{{score-1}}</div>
+            <div>长度：{{snakeArr.length}}--------速度： {{speed}} <button @click="turnOnAuto = !turnOnAuto">已{{turnOnAuto?"开启":"关闭"}}auto</button></div>
             <canvas id="canvas"></canvas>
-            <input type="range" v-model="speed" min=1 max=30>
+            <input type="range" v-model="speed" min=1 max=40 class="level">
       </div>
   </body>
   <script>
@@ -19,13 +21,24 @@
         el: '#app',
         data: {
             ctx: '',
+            score: 0,
             snakeArr: [[0,0,40,40],[40,0,40,40],[80,0,40,40],[120,0,40,40]],
             timer: '', //刷新画布
             moveTime: '', //移动
             direction: [40, 0, 0, 0], //初始化方向为右
-            speed: 10, //初始化速度
-            food: [0,0, 40,40],
-            isStop: false
+            speed: 40, //初始化速度
+            food: [],
+            isStop: false,
+            turnOnAuto: true,
+            check: false,
+            count: 0
+        },
+        watch: {
+            //动态改变速度
+            speed(){
+                this.stopGame()
+                this.stopGame()
+            }
         },
         methods: {
             //开始
@@ -34,35 +47,75 @@
                 this.snakeArr.forEach(item => {
                     this.ctx.fillRect(item[0],item[1],item[2],item[3])
                 })
-                this.ctx.fillRect(this.food[0],this.food[1],this.food[2],this.food[3])
+                this.food.forEach(item => {
+                    this.ctx.fillRect(item[0],item[1],item[2],item[3])
+                })
             },
             //移动
             move(){
-                let l = this.snakeArr.length, path = this.getNext()
-                let newArr = [],checkFood = false
-                //判断是否getfood
-                if(path[0] === this.food[0] && path[1] === this.food[1]){
-                    this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
-                    this.setFood()
-                    setTimeout(()=>{
-                        this.snakeArr = path.concat(this.snakeArr)
-                    },(1000/this.speed)*l)
+                if(this.turnOnAuto){
+                    this.direction = this.autoFind()
                 }
-                else{
-                    this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
-                }
+                let l = this.snakeArr.length, path = this.getNext(this.direction)
+                
+                this.check = false
+
                 //判断是否撞墙gameover
                 if(path[0] > 680 || path[0] < 0 || path[1] > 680 || path[1] < 0) {
-                    return this.gameover()
+                    this.check = true
+                    if(this.turnOnAuto){
+                        return this.autoMode()
+                    }
+                    else{
+                        return this.gameover()
+                    }
                 }
                 //判断是否撞到自己
                 this.snakeArr.forEach(item =>{
                     if(item[0] === path[0]&&item[1]=== path[1]){
-                        return this.gameover()
-                        // break
+                        this.check = true
+                        if(this.turnOnAuto){
+                            return this.autoMode()
+                        }
+                        else{
+                            return this.gameover()
+                        }
                     }
                 })
-                this.snakeArr.push(path)
+
+                //判断是否离自身太近
+                // if(l>14 && this.turnOnAuto){
+                //     let r = l/2
+                //     for(let i=0;i<r;i++){
+                //         let distance = Math.abs(this.snakeArr[i][0] - path[0]) + Math.abs(this.snakeArr[i][1] - path[1])
+                //         console.log(distance)
+                //         if(distance < 160){
+                //             this.check = true
+                //             console.log(distance)
+                //             return this.autoMode()
+                //         }
+                //     }
+                // }
+                
+                //判断是否getfood
+                if(!this.check){
+                    let foodL = this.food.length - 1
+                    let lastPot = this.deepCopy(this.snakeArr)[0]
+                    if(path[0] === this.food[foodL][0] && path[1] === this.food[foodL][1]){
+                        this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
+                        this.setFood()
+                    }
+                    else{
+                        this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
+                    }
+                    this.snakeArr.push(path)
+                    if(lastPot[0] === this.food[0][0] && lastPot[1] === this.food[0][1]){
+                        let f = [lastPot]
+                        this.snakeArr = f.concat(this.deepCopy(this.snakeArr))
+                        this.food = this.deepCopy(this.food.slice(1))
+                    }
+                    // console.log(this.snakeArr,this.direction)
+                }
             },
             // 游戏结束
             gameover(){
@@ -78,10 +131,77 @@
                 window.clearInterval(this.timer)
                 window.clearInterval(this.moveTime)
                 this.direction = [40, 0, 0, 0] //初始化方向为右
-                this.food = [0,0, 40,40]
-                
+                this.food = []
+                this.score = 0
                 this.ctx.clearRect(0,0,720,720)
                 this.run()
+            },
+            //自动寻路
+            autoMode(){
+                let t = Math.random() >= 0.5? -40: 40
+                if(this.direction[0] !== 0) {
+                    this.direction = [0, t, 0,0]
+                }
+                else{
+                    this.direction = [t, 0, 0,0]
+                }
+                this.move()
+                
+            },
+            //find
+            autoFind() {
+                let dr = this.direction
+                if(dr[0] === 0){
+                    let arr = [
+                        {
+                            dir: [40, 0, 0, 0],
+                            len: this.getNext([40, 0, 0, 0])
+                        },
+                        {
+                            dir: [-40, 0, 0, 0],
+                            len: this.getNext([-40, 0, 0, 0])
+                        },
+                        {
+                            dir: this.direction,
+                            len: this.getNext(this.direction)
+                        },
+                    ]
+                    arr.sort((a,b)=>{
+                        return this.length(a.len) -this.length(b.len)
+                    })
+                    if(this.check){
+                        return this.direction
+                    }
+                    else return arr[0].dir
+                }
+                else{
+                    let arr = [
+                        {
+                            dir: [0, 40, 0, 0],
+                            len: this.getNext([0, 40, 0, 0])
+                        },
+                        {
+                            dir: [0, -40, 0, 0],
+                            len: this.getNext([0, -40, 0, 0])
+                        },
+                        {
+                            dir: this.direction,
+                            len: this.getNext(this.direction)
+                        },
+                    ]
+                    arr.sort((a,b)=>{
+                        return this.length(a.len) -this.length(b.len)
+                    })
+                    if(this.check){
+                        return this.direction
+                    }
+                    else return arr[0].dir
+                }
+            },
+            //head和food距离
+            length(head){
+                let l = this.food.length - 1
+                return Math.abs(this.food[l][0] - head[0]) + Math.abs(this.food[l][1] - head[1])
             },
             // 暂停
             stopGame(){
@@ -109,13 +229,14 @@
                         return  this.setFood()
                     }
                 }
-                this.food = [x, y, 40, 40]
+                this.score ++
+                this.food.push([x, y, 40, 40])
             },
             // 获取下步位置
-            getNext(){
+            getNext(arr){
                 let a = this.deepCopy(this.snakeArr.slice(this.snakeArr.length-1))[0]
                 for(let i=0;i<2;i++){
-                    a[i] = a[i] + this.direction[i]
+                    a[i] = a[i] + arr[i]
                 }
                 return a
             },
@@ -184,5 +305,8 @@
         height: 720px;
         border: 1px solid black;
         /* cursor: none; */
+    }
+    .level{
+        transform: rotate(-90deg);
     }
 </style>
