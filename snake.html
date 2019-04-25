@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="cache-control" content="max-age=86400">
+    <script src="https://cdn.bootcss.com/babel-polyfill/6.23.0/polyfill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script ></script>
+    <title>snake</title>
+  </head>
+  <body>
+      <div id="app">
+            <canvas id="canvas"></canvas>
+            <input type="range" v-model="speed" min=1 max=30>
+      </div>
+  </body>
+  <script>
+    let app = new Vue({
+        el: '#app',
+        data: {
+            ctx: '',
+            snakeArr: [[0,0,40,40],[40,0,40,40],[80,0,40,40],[120,0,40,40]],
+            timer: '', //刷新画布
+            moveTime: '', //移动
+            direction: [40, 0, 0, 0], //初始化方向为右
+            speed: 10, //初始化速度
+            food: [0,0, 40,40],
+            isStop: false
+        },
+        methods: {
+            //开始
+            createSnake(){
+                this.ctx.clearRect(0,0,720,720)
+                this.snakeArr.forEach(item => {
+                    this.ctx.fillRect(item[0],item[1],item[2],item[3])
+                })
+                this.ctx.fillRect(this.food[0],this.food[1],this.food[2],this.food[3])
+            },
+            //移动
+            move(){
+                let l = this.snakeArr.length, path = this.getNext()
+                let newArr = [],checkFood = false
+                //判断是否getfood
+                if(path[0] === this.food[0] && path[1] === this.food[1]){
+                    this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
+                    this.setFood()
+                    setTimeout(()=>{
+                        this.snakeArr = path.concat(this.snakeArr)
+                    },(1000/this.speed)*l)
+                }
+                else{
+                    this.snakeArr = this.deepCopy(this.snakeArr.slice(1))
+                }
+                //判断是否撞墙gameover
+                if(path[0] > 680 || path[0] < 0 || path[1] > 680 || path[1] < 0) {
+                    return this.gameover()
+                }
+                //判断是否撞到自己
+                this.snakeArr.forEach(item =>{
+                    if(item[0] === path[0]&&item[1]=== path[1]){
+                        return this.gameover()
+                        // break
+                    }
+                })
+                this.snakeArr.push(path)
+            },
+            // 游戏结束
+            gameover(){
+                window.clearInterval(this.timer)
+                window.clearInterval(this.moveTime)
+                this.ctx.clearRect(0,0,720,720)
+                this.ctx.font="40px Georgia"
+                this.ctx.fillText("游戏结束",260,300)
+            },
+            //重新开始
+            rePlay(){
+                this.snakeArr = [[0,0,40,40],[40,0,40,40],[80,0,40,40],[120,0,40,40]]
+                window.clearInterval(this.timer)
+                window.clearInterval(this.moveTime)
+                this.direction = [40, 0, 0, 0] //初始化方向为右
+                this.food = [0,0, 40,40]
+                
+                this.ctx.clearRect(0,0,720,720)
+                this.run()
+            },
+            // 暂停
+            stopGame(){
+                if(this.isStop){
+                    this.run()
+                    this.isStop = false
+                }
+                else{
+                    this.isStop = true
+                    window.clearInterval(this.timer)
+                    window.clearInterval(this.moveTime)
+                }
+            },
+            //数组深拷贝
+            deepCopy (arr){
+                return JSON.parse(JSON.stringify(arr))
+            },
+            //生成食物
+            setFood(){
+                let x = Math.round(Math.random() * 17)*40,
+                y = Math.round(Math.random() * 17)*40,
+                l = this.snakeArr.length
+                for(let i= 0;i<l;i++){
+                    if(this.snakeArr[i][0] === x && this.snakeArr[i][1] === y) {
+                        return  this.setFood()
+                    }
+                }
+                this.food = [x, y, 40, 40]
+            },
+            // 获取下步位置
+            getNext(){
+                let a = this.deepCopy(this.snakeArr.slice(this.snakeArr.length-1))[0]
+                for(let i=0;i<2;i++){
+                    a[i] = a[i] + this.direction[i]
+                }
+                return a
+            },
+            //开始
+            run(){
+                if(!this.isStop){
+                    this.setFood()
+                }
+                this.createSnake()
+                this.timer = setInterval(this.createSnake, 20)
+                this.move()
+                this.moveTime = setInterval(this.move, 1000/this.speed)
+            }
+        },
+        created(){
+            
+        },
+        mounted(){
+            let canvas=document.getElementById('canvas');
+            canvas.height=720
+            canvas.width=720
+            this.ctx=canvas.getContext('2d');
+
+            //绑定键盘事件，控制方向
+            document.onkeydown=(event)=>{
+                let e = event || window.event || arguments.callee.caller.arguments[0];
+                if(e && e.keyCode==65 && this.direction[0] === 0){ // 按 A 
+                    this.direction = [-40, 0, 0, 0]
+                }
+                if(e && e.keyCode==68 && this.direction[0] === 0){ // 按 D
+                    this.direction = [40, 0, 0, 0]
+                }
+                if(e && e.keyCode==87 && this.direction[1] === 0){ // 按 W
+                    this.direction = [0, -40, 0, 0]
+                }
+                if(e && e.keyCode==83 && this.direction[1] === 0){ // 按 S
+                    this.direction = [0, 40, 0, 0]
+                }
+                if(e && e.keyCode==32){ // space暂停
+                    this.stopGame()
+                }
+                if(e && e.keyCode==13) {//回车重新开始
+                    this.rePlay()
+                }
+            }
+            this.run()
+        }
+    })
+    
+  </script>
+</html>
+<style>
+    *{
+        margin: 0;
+        padding: 0;
+    }
+    body{
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    #canvas{
+        width: 720px;
+        height: 720px;
+        border: 1px solid black;
+        /* cursor: none; */
+    }
+</style>
