@@ -13,7 +13,7 @@
             <div>得分：{{score-1}}</div>
             <div>长度：{{snakeArr.length}}--------速度： {{speed}} <button @click="turnOnAuto = !turnOnAuto">已{{turnOnAuto?"开启":"关闭"}}auto</button></div>
             <canvas id="canvas"></canvas>
-            <input type="range" v-model="speed" min=1 max=40 class="level">
+            <input type="range" v-model="speed" min="1" max="40" class="level">
       </div>
   </body>
   <script>
@@ -22,10 +22,10 @@
         data: {
             ctx: '',
             score: 0,
-            snakeArr: [[0,0,40,40],[40,0,40,40],[80,0,40,40],[120,0,40,40]],
+            snakeArr: [[0,0],[40,0],[80,0],[120,0]],
             timer: '', //刷新画布
             moveTime: '', //移动
-            direction: [40, 0, 0, 0], //初始化方向为右
+            direction: [40, 0], //初始化方向为右
             speed: 40, //初始化速度
             food: [],
             isStop: false,
@@ -44,12 +44,19 @@
             //开始
             createSnake(){
                 this.ctx.clearRect(0,0,720,720)
-                this.snakeArr.forEach(item => {
-                    this.ctx.fillRect(item[0],item[1],item[2],item[3])
+                let l = this.snakeArr.length - 1
+                this.snakeArr.forEach((item, index) => {
+                    if(index < l){
+                        this.ctx.fillStyle = "green"
+                    }
+                    else{
+                        this.ctx.fillStyle = "blue"
+                    }
+                    this.ctx.fillRect(item[0],item[1],40,40)
                 })
-                this.food.forEach(item => {
-                    this.ctx.fillRect(item[0],item[1],item[2],item[3])
-                })
+                this.ctx.fillStyle = "red"
+                this.ctx.fillRect(this.food[this.food.length - 1][0],this.food[this.food.length - 1][1],40,40)
+                
             },
             //移动
             move(){
@@ -63,40 +70,26 @@
                 //判断是否撞墙gameover
                 if(path[0] > 680 || path[0] < 0 || path[1] > 680 || path[1] < 0) {
                     this.check = true
-                    if(this.turnOnAuto){
-                        return this.autoMode()
-                    }
-                    else{
-                        return this.gameover()
-                    }
                 }
-                //判断是否撞到自己
-                this.snakeArr.forEach(item =>{
-                    if(item[0] === path[0]&&item[1]=== path[1]){
-                        this.check = true
-                        if(this.turnOnAuto){
-                            return this.autoMode()
+                else{
+                    //判断是否撞到自己
+                    let count = 0
+                    for(let i=0;i<l;i++){
+                        if(this.snakeArr[i][0] === path[0]&&this.snakeArr[i][1]=== path[1]){
+                            this.check = true
+                            break
                         }
-                        else{
-                            return this.gameover()
+                        let distance = Math.abs(this.snakeArr[i][0] - path[0]) + Math.abs(this.snakeArr[i][1] - path[1])
+                        if( distance === 40) {
+                            count ++
+                        }
+                        if(count === 4){
+                            this.check = true
+                            break
                         }
                     }
-                })
-
-                //判断是否离自身太近
-                // if(l>14 && this.turnOnAuto){
-                //     let r = l/2
-                //     for(let i=0;i<r;i++){
-                //         let distance = Math.abs(this.snakeArr[i][0] - path[0]) + Math.abs(this.snakeArr[i][1] - path[1])
-                //         console.log(distance)
-                //         if(distance < 160){
-                //             this.check = true
-                //             console.log(distance)
-                //             return this.autoMode()
-                //         }
-                //     }
-                // }
-                
+                    
+                }
                 //判断是否getfood
                 if(!this.check){
                     let foodL = this.food.length - 1
@@ -116,6 +109,15 @@
                     }
                     // console.log(this.snakeArr,this.direction)
                 }
+                else{
+                    if(this.turnOnAuto){
+                        // console.log(item)
+                        return this.autoMode()
+                    }
+                    else{
+                        return this.gameover()
+                    }
+                }
             },
             // 游戏结束
             gameover(){
@@ -127,10 +129,10 @@
             },
             //重新开始
             rePlay(){
-                this.snakeArr = [[0,0,40,40],[40,0,40,40],[80,0,40,40],[120,0,40,40]]
+                this.snakeArr = [[0,0],[40,0],[80,0],[120,0]]
                 window.clearInterval(this.timer)
                 window.clearInterval(this.moveTime)
-                this.direction = [40, 0, 0, 0] //初始化方向为右
+                this.direction = [40, 0] //初始化方向为右
                 this.food = []
                 this.score = 0
                 this.ctx.clearRect(0,0,720,720)
@@ -140,34 +142,56 @@
             autoMode(){
                 let t = Math.random() >= 0.5? -40: 40
                 if(this.direction[0] !== 0) {
-                    this.direction = [0, t, 0,0]
+                    this.direction = [0, t]
                 }
                 else{
-                    this.direction = [t, 0, 0,0]
+                    this.direction = [t, 0]
                 }
                 this.move()
                 
             },
             //find
             autoFind() {
-                let dr = this.direction
+                let dr = this.direction,
+                l = this.food.length - 1
+                // tail = this.snakeArr[0],
+                // isOk = true
                 if(dr[0] === 0){
+                //     let arrTail = [
+                //         {
+                //             dir: [40, 0],
+                //             len: this.getNext([40, 0])
+                //         },
+                //         {
+                //             dir: [-40, 0],
+                //             len: this.getNext([-40, 0])
+                //         },
+                //         {
+                //             dir: this.direction,
+                //             len: this.getNext(this.direction)
+                //         },
+                //     ]
+                //     arrTail.forEach(item=>{
+                //         let distance = this.length(item.len,tail)
+
+                //     })
                     let arr = [
                         {
-                            dir: [40, 0, 0, 0],
-                            len: this.getNext([40, 0, 0, 0])
+                            dir: [40, 0],
+                            len: this.getNext([40, 0])
                         },
                         {
-                            dir: [-40, 0, 0, 0],
-                            len: this.getNext([-40, 0, 0, 0])
+                            dir: [-40, 0],
+                            len: this.getNext([-40, 0])
                         },
                         {
                             dir: this.direction,
                             len: this.getNext(this.direction)
                         },
                     ]
+                    
                     arr.sort((a,b)=>{
-                        return this.length(a.len) -this.length(b.len)
+                        return this.length(a.len,this.food[l]) -this.length(b.len,this.food[l])
                     })
                     if(this.check){
                         return this.direction
@@ -177,12 +201,12 @@
                 else{
                     let arr = [
                         {
-                            dir: [0, 40, 0, 0],
-                            len: this.getNext([0, 40, 0, 0])
+                            dir: [0, 40],
+                            len: this.getNext([0, 40])
                         },
                         {
-                            dir: [0, -40, 0, 0],
-                            len: this.getNext([0, -40, 0, 0])
+                            dir: [0, -40],
+                            len: this.getNext([0, -40])
                         },
                         {
                             dir: this.direction,
@@ -190,7 +214,7 @@
                         },
                     ]
                     arr.sort((a,b)=>{
-                        return this.length(a.len) -this.length(b.len)
+                        return this.length(a.len,this.food[l]) -this.length(b.len,this.food[l])
                     })
                     if(this.check){
                         return this.direction
@@ -199,9 +223,8 @@
                 }
             },
             //head和food距离
-            length(head){
-                let l = this.food.length - 1
-                return Math.abs(this.food[l][0] - head[0]) + Math.abs(this.food[l][1] - head[1])
+            length(head, taget){
+                return Math.abs(taget[0] - head[0]) + Math.abs(taget[1] - head[1])
             },
             // 暂停
             stopGame(){
@@ -230,7 +253,7 @@
                     }
                 }
                 this.score ++
-                this.food.push([x, y, 40, 40])
+                this.food.push([x, y])
             },
             // 获取下步位置
             getNext(arr){
@@ -251,9 +274,6 @@
                 this.moveTime = setInterval(this.move, 1000/this.speed)
             }
         },
-        created(){
-            
-        },
         mounted(){
             let canvas=document.getElementById('canvas');
             canvas.height=720
@@ -264,16 +284,16 @@
             document.onkeydown=(event)=>{
                 let e = event || window.event || arguments.callee.caller.arguments[0];
                 if(e && e.keyCode==65 && this.direction[0] === 0){ // 按 A 
-                    this.direction = [-40, 0, 0, 0]
+                    this.direction = [-40, 0]
                 }
                 if(e && e.keyCode==68 && this.direction[0] === 0){ // 按 D
-                    this.direction = [40, 0, 0, 0]
+                    this.direction = [40, 0]
                 }
                 if(e && e.keyCode==87 && this.direction[1] === 0){ // 按 W
-                    this.direction = [0, -40, 0, 0]
+                    this.direction = [0, -40]
                 }
                 if(e && e.keyCode==83 && this.direction[1] === 0){ // 按 S
-                    this.direction = [0, 40, 0, 0]
+                    this.direction = [0, 40]
                 }
                 if(e && e.keyCode==32){ // space暂停
                     this.stopGame()
